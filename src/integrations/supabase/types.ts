@@ -63,6 +63,52 @@ export type Database = {
           },
         ]
       }
+      attempt_progress_answers: {
+        Row: {
+          attempt_id: string
+          id: string
+          question_id: string
+          selected_option_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempt_id: string
+          id?: string
+          question_id: string
+          selected_option_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempt_id?: string
+          id?: string
+          question_id?: string
+          selected_option_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attempt_progress_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "test_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attempt_progress_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attempt_progress_answers_selected_option_id_fkey"
+            columns: ["selected_option_id"]
+            isOneToOne: false
+            referencedRelation: "question_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       practice_tests: {
         Row: {
           created_at: string
@@ -130,6 +176,35 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      question_bookmarks: {
+        Row: {
+          created_at: string
+          id: string
+          question_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_bookmarks_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       question_options: {
         Row: {
@@ -224,8 +299,11 @@ export type Database = {
           completed_at: string | null
           created_at: string
           id: string
+          last_question_index: number
           score: number
+          seconds_remaining: number | null
           started_at: string
+          status: string
           test_id: string
           time_taken_seconds: number | null
           total_questions: number
@@ -235,8 +313,11 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          last_question_index?: number
           score?: number
+          seconds_remaining?: number | null
           started_at?: string
+          status?: string
           test_id: string
           time_taken_seconds?: number | null
           total_questions?: number
@@ -246,8 +327,11 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
+          last_question_index?: number
           score?: number
+          seconds_remaining?: number | null
           started_at?: string
+          status?: string
           test_id?: string
           time_taken_seconds?: number | null
           total_questions?: number

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Check, X } from "lucide-react";
+import { BookmarkButton } from "@/components/bookmark-button";
 
 export const Route = createFileRoute("/practice/$testId/results/$attemptId")({
   ssr: false,
@@ -130,6 +131,11 @@ function Results() {
                         {row.is_correct ? "Correct" : "Wrong"}
                       </Badge>
                     </div>
+                    {user && (
+                      <div className="pt-1 -ml-2">
+                        <BookmarkButton questionId={row.questions.id} userId={user.id} />
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {row.questions.question_options.map((opt) => {

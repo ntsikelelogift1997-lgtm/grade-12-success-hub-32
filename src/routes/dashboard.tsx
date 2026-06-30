@@ -5,7 +5,7 @@ import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, LineChart } from "lucide-react";
+import { BookOpen, LineChart, Star } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({
@@ -72,7 +72,7 @@ function Dashboard() {
           <p className="text-muted-foreground mt-1">You're signed in to your account.</p>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-3 gap-4">
           <Link to="/practice">
             <Card className="hover:border-primary transition-colors h-full">
               <CardHeader>
@@ -88,6 +88,15 @@ function Dashboard() {
                 <LineChart className="h-6 w-6 text-primary mb-2" />
                 <CardTitle className="text-base">My progress</CardTitle>
                 <CardDescription>Track your scores and improvement over time.</CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+          <Link to="/bookmarks">
+            <Card className="hover:border-primary transition-colors h-full">
+              <CardHeader>
+                <Star className="h-6 w-6 text-amber-500 mb-2" />
+                <CardTitle className="text-base">Bookmarks</CardTitle>
+                <CardDescription>Revisit questions you've starred for revision.</CardDescription>
               </CardHeader>
             </Card>
           </Link>

@@ -9,10 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PracticeIndexRouteImport } from './routes/practice.index'
+import { Route as PracticeTestIdRouteImport } from './routes/practice.$testId'
+import { Route as PracticeTestIdResultsAttemptIdRouteImport } from './routes/practice.$testId.results.$attemptId'
 
+const ProgressRoute = ProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -28,39 +37,99 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PracticeIndexRoute = PracticeIndexRouteImport.update({
+  id: '/practice/',
+  path: '/practice/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PracticeTestIdRoute = PracticeTestIdRouteImport.update({
+  id: '/practice/$testId',
+  path: '/practice/$testId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PracticeTestIdResultsAttemptIdRoute =
+  PracticeTestIdResultsAttemptIdRouteImport.update({
+    id: '/results/$attemptId',
+    path: '/results/$attemptId',
+    getParentRoute: () => PracticeTestIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/progress': typeof ProgressRoute
+  '/practice/$testId': typeof PracticeTestIdRouteWithChildren
+  '/practice/': typeof PracticeIndexRoute
+  '/practice/$testId/results/$attemptId': typeof PracticeTestIdResultsAttemptIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/progress': typeof ProgressRoute
+  '/practice/$testId': typeof PracticeTestIdRouteWithChildren
+  '/practice': typeof PracticeIndexRoute
+  '/practice/$testId/results/$attemptId': typeof PracticeTestIdResultsAttemptIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/progress': typeof ProgressRoute
+  '/practice/$testId': typeof PracticeTestIdRouteWithChildren
+  '/practice/': typeof PracticeIndexRoute
+  '/practice/$testId/results/$attemptId': typeof PracticeTestIdResultsAttemptIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/progress'
+    | '/practice/$testId'
+    | '/practice/'
+    | '/practice/$testId/results/$attemptId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard'
-  id: '__root__' | '/' | '/auth' | '/dashboard'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/progress'
+    | '/practice/$testId'
+    | '/practice'
+    | '/practice/$testId/results/$attemptId'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/progress'
+    | '/practice/$testId'
+    | '/practice/'
+    | '/practice/$testId/results/$attemptId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
+  ProgressRoute: typeof ProgressRoute
+  PracticeTestIdRoute: typeof PracticeTestIdRouteWithChildren
+  PracticeIndexRoute: typeof PracticeIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/progress': {
+      id: '/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof ProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -82,13 +151,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/practice/': {
+      id: '/practice/'
+      path: '/practice'
+      fullPath: '/practice/'
+      preLoaderRoute: typeof PracticeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/practice/$testId': {
+      id: '/practice/$testId'
+      path: '/practice/$testId'
+      fullPath: '/practice/$testId'
+      preLoaderRoute: typeof PracticeTestIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/practice/$testId/results/$attemptId': {
+      id: '/practice/$testId/results/$attemptId'
+      path: '/results/$attemptId'
+      fullPath: '/practice/$testId/results/$attemptId'
+      preLoaderRoute: typeof PracticeTestIdResultsAttemptIdRouteImport
+      parentRoute: typeof PracticeTestIdRoute
+    }
   }
 }
+
+interface PracticeTestIdRouteChildren {
+  PracticeTestIdResultsAttemptIdRoute: typeof PracticeTestIdResultsAttemptIdRoute
+}
+
+const PracticeTestIdRouteChildren: PracticeTestIdRouteChildren = {
+  PracticeTestIdResultsAttemptIdRoute: PracticeTestIdResultsAttemptIdRoute,
+}
+
+const PracticeTestIdRouteWithChildren = PracticeTestIdRoute._addFileChildren(
+  PracticeTestIdRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
+  ProgressRoute: ProgressRoute,
+  PracticeTestIdRoute: PracticeTestIdRouteWithChildren,
+  PracticeIndexRoute: PracticeIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

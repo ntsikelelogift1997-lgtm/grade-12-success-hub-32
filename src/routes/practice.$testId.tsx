@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { BookmarkButton } from "@/components/bookmark-button";
 
 export const Route = createFileRoute("/practice/$testId")({
   ssr: false,
@@ -16,7 +17,19 @@ export const Route = createFileRoute("/practice/$testId")({
 
 type Test = { id: string; title: string; duration_minutes: number };
 type Option = { id: string; option_text: string; order_index: number };
-type Question = { id: string; question_text: string; order_index: number; explanation: string | null; question_options: Option[] };
+type Question = {
+  id: string;
+  question_text: string;
+  order_index: number;
+  explanation: string | null;
+  question_options: Option[];
+};
+type Attempt = {
+  id: string;
+  seconds_remaining: number | null;
+  last_question_index: number;
+  status: string;
+};
 
 function TakeTest() {
   const { testId } = Route.useParams();
@@ -25,23 +38,36 @@ function TakeTest() {
 
   const [test, setTest] = useState<Test | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({}); // questionId -> optionId
+  const [attempt, setAttempt] = useState<Attempt | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentIdx, setCurrentIdx] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const startedAtRef = useRef<number>(Date.now());
+  const [resumed, setResumed] = useState(false);
+
   const submittedRef = useRef(false);
+  const attemptIdRef = useRef<string | null>(null);
+  const stateRef = useRef({ secondsLeft: 0, currentIdx: 0 });
+
+  useEffect(() => {
+    stateRef.current = { secondsLeft: secondsLeft ?? 0, currentIdx };
+  }, [secondsLeft, currentIdx]);
 
   useEffect(() => {
     if (!authLoading && !user) navigate({ to: "/auth" });
   }, [authLoading, user, navigate]);
 
+  // Load test + questions + resume-or-create attempt
   useEffect(() => {
     if (!user) return;
     (async () => {
       const [{ data: tData }, { data: qData }] = await Promise.all([
-        supabase.from("practice_tests").select("id, title, duration_minutes").eq("id", testId).maybeSingle(),
+        supabase
+          .from("practice_tests")
+          .select("id, title, duration_minutes")
+          .eq("id", testId)
+          .maybeSingle(),
         supabase
           .from("questions")
           .select("id, question_text, order_index, explanation, question_options ( id, option_text, order_index )")
@@ -58,20 +84,111 @@ function TakeTest() {
       qs.forEach((q) => q.question_options.sort((a, b) => a.order_index - b.order_index));
       setTest(tData as Test);
       setQuestions(qs);
-      setSecondsLeft(tData.duration_minutes * 60);
-      startedAtRef.current = Date.now();
+
+      // Find existing in-progress attempt
+      const { data: existing } = await supabase
+        .from("test_attempts")
+        .select("id, seconds_remaining, last_question_index, status")
+        .eq("user_id", user.id)
+        .eq("test_id", testId)
+        .eq("status", "in_progress")
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        // Restore
+        const { data: drafts } = await supabase
+          .from("attempt_progress_answers")
+          .select("question_id, selected_option_id")
+          .eq("attempt_id", existing.id);
+
+        const restored: Record<string, string> = {};
+        (drafts ?? []).forEach((d) => {
+          if (d.selected_option_id) restored[d.question_id] = d.selected_option_id;
+        });
+        setAnswers(restored);
+        setAttempt(existing as Attempt);
+        attemptIdRef.current = existing.id;
+        setCurrentIdx(Math.min(existing.last_question_index, Math.max(0, qs.length - 1)));
+        setSecondsLeft(existing.seconds_remaining ?? tData.duration_minutes * 60);
+        setResumed(true);
+      } else {
+        // Create new in-progress
+        const initialSeconds = tData.duration_minutes * 60;
+        const { data: created } = await supabase
+          .from("test_attempts")
+          .insert({
+            user_id: user.id,
+            test_id: tData.id,
+            total_questions: qs.length,
+            seconds_remaining: initialSeconds,
+            last_question_index: 0,
+            status: "in_progress",
+          })
+          .select("id, seconds_remaining, last_question_index, status")
+          .single();
+        if (created) {
+          setAttempt(created as Attempt);
+          attemptIdRef.current = created.id;
+        }
+        setSecondsLeft(initialSeconds);
+      }
       setLoading(false);
     })();
   }, [testId, user, navigate]);
 
+  // Auto-save answer + progress
+  const persistAnswer = useCallback(
+    async (questionId: string, optionId: string) => {
+      const aid = attemptIdRef.current;
+      if (!aid) return;
+      await supabase
+        .from("attempt_progress_answers")
+        .upsert(
+          { attempt_id: aid, question_id: questionId, selected_option_id: optionId, updated_at: new Date().toISOString() },
+          { onConflict: "attempt_id,question_id" },
+        );
+    },
+    [],
+  );
+
+  const persistProgress = useCallback(async () => {
+    const aid = attemptIdRef.current;
+    if (!aid || submittedRef.current) return;
+    const { secondsLeft: s, currentIdx: idx } = stateRef.current;
+    await supabase
+      .from("test_attempts")
+      .update({ seconds_remaining: Math.max(0, s), last_question_index: idx })
+      .eq("id", aid);
+  }, []);
+
+  // Save progress every 10s and on tab hidden / unload
+  useEffect(() => {
+    if (submittedRef.current) return;
+    const id = setInterval(persistProgress, 10_000);
+    const onHide = () => {
+      if (document.visibilityState === "hidden") persistProgress();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", persistProgress);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", persistProgress);
+    };
+  }, [persistProgress]);
+
   const handleSubmit = useCallback(async () => {
-    if (submittedRef.current || !user || !test) return;
+    if (submittedRef.current || !user || !test || !attemptIdRef.current) return;
     submittedRef.current = true;
     setSubmitting(true);
 
-    const timeTaken = Math.floor((Date.now() - startedAtRef.current) / 1000);
+    const aid = attemptIdRef.current;
+    const initialSeconds = test.duration_minutes * 60;
+    const timeTaken = Math.max(0, initialSeconds - (stateRef.current.secondsLeft ?? 0));
 
-    // Compute correctness from loaded option data via a fresh query (avoids trusting client)
+    // Server-trusted scoring
     const { data: opts } = await supabase
       .from("question_options")
       .select("id, question_id, is_correct")
@@ -83,41 +200,39 @@ function TakeTest() {
     });
 
     let score = 0;
-    const answerRows: Array<{ question_id: string; selected_option_id: string | null; is_correct: boolean }> = [];
-    questions.forEach((q) => {
+    const answerRows = questions.map((q) => {
       const selected = answers[q.id] ?? null;
       const isCorrect = selected != null && correctByQuestion[q.id] === selected;
       if (isCorrect) score += 1;
-      answerRows.push({ question_id: q.id, selected_option_id: selected, is_correct: isCorrect });
+      return { attempt_id: aid, question_id: q.id, selected_option_id: selected, is_correct: isCorrect };
     });
 
-    const { data: attempt, error: aErr } = await supabase
+    const { error: updErr } = await supabase
       .from("test_attempts")
-      .insert({
-        user_id: user.id,
-        test_id: test.id,
+      .update({
         score,
         total_questions: questions.length,
         time_taken_seconds: timeTaken,
         completed_at: new Date().toISOString(),
+        status: "completed",
+        seconds_remaining: 0,
       })
-      .select("id")
-      .single();
+      .eq("id", aid);
 
-    if (aErr || !attempt) {
+    if (updErr) {
       toast.error("Could not save attempt. Try again.");
       submittedRef.current = false;
       setSubmitting(false);
       return;
     }
 
-    const { error: ansErr } = await supabase
-      .from("attempt_answers")
-      .insert(answerRows.map((r) => ({ ...r, attempt_id: attempt.id })));
+    await supabase.from("attempt_answers").insert(answerRows);
+    await supabase.from("attempt_progress_answers").delete().eq("attempt_id", aid);
 
-    if (ansErr) toast.error("Some answers could not be saved.");
-
-    navigate({ to: "/practice/$testId/results/$attemptId", params: { testId: test.id, attemptId: attempt.id } });
+    navigate({
+      to: "/practice/$testId/results/$attemptId",
+      params: { testId: test.id, attemptId: aid },
+    });
   }, [answers, navigate, questions, test, user]);
 
   // Timer
@@ -132,10 +247,18 @@ function TakeTest() {
     return () => clearTimeout(id);
   }, [secondsLeft, handleSubmit]);
 
+  const handleExit = useCallback(async () => {
+    await persistProgress();
+    toast.success("Progress saved — resume any time.");
+    navigate({ to: "/practice" });
+  }, [persistProgress, navigate]);
+
   const answeredCount = useMemo(() => Object.keys(answers).length, [answers]);
 
-  if (authLoading || loading || !test) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading test...</div>;
-  if (questions.length === 0) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">This test has no questions yet.</div>;
+  if (authLoading || loading || !test || !attempt)
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading test...</div>;
+  if (questions.length === 0)
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">This test has no questions yet.</div>;
 
   const q = questions[currentIdx];
   const mins = Math.floor((secondsLeft ?? 0) / 60);
@@ -159,9 +282,18 @@ function TakeTest() {
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-2xl">
+        {resumed && (
+          <div className="mb-4 rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            Resumed from your last session.
+          </div>
+        )}
+
         <Card>
           <CardHeader>
-            <CardTitle className="text-base leading-relaxed">{q.question_text}</CardTitle>
+            <div className="flex items-start justify-between gap-2">
+              <CardTitle className="text-base leading-relaxed">{q.question_text}</CardTitle>
+              {user && <BookmarkButton questionId={q.id} userId={user.id} />}
+            </div>
           </CardHeader>
           <CardContent className="space-y-2">
             {q.question_options.map((opt) => {
@@ -170,7 +302,10 @@ function TakeTest() {
                 <button
                   key={opt.id}
                   type="button"
-                  onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: opt.id }))}
+                  onClick={() => {
+                    setAnswers((prev) => ({ ...prev, [q.id]: opt.id }));
+                    persistAnswer(q.id, opt.id);
+                  }}
                   className={`w-full text-left rounded-md border px-4 py-3 text-sm transition-colors ${
                     selected ? "border-primary bg-primary/5" : "border-input hover:bg-accent"
                   }`}
@@ -202,7 +337,13 @@ function TakeTest() {
         )}
 
         <div className="mt-6 text-center">
-          <Link to="/practice" className="text-xs text-muted-foreground hover:underline">Exit test</Link>
+          <Button variant="ghost" size="sm" onClick={handleExit}>
+            Save &amp; exit
+          </Button>
+          <p className="text-xs text-muted-foreground mt-1">Your progress is saved automatically.</p>
+          <div className="mt-2">
+            <Link to="/practice" className="text-xs text-muted-foreground hover:underline">Back to tests</Link>
+          </div>
         </div>
       </main>
     </div>

@@ -1,10 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { BookOpen, LineChart } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({
@@ -69,6 +70,27 @@ function Dashboard() {
         <div>
           <h2 className="text-2xl font-bold">Welcome{profile?.full_name ? `, ${profile.full_name}` : ""}!</h2>
           <p className="text-muted-foreground mt-1">You're signed in to your account.</p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <Link to="/practice">
+            <Card className="hover:border-primary transition-colors h-full">
+              <CardHeader>
+                <BookOpen className="h-6 w-6 text-primary mb-2" />
+                <CardTitle className="text-base">Practice tests</CardTitle>
+                <CardDescription>Timed tests with instant marks and answer review.</CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
+          <Link to="/progress">
+            <Card className="hover:border-primary transition-colors h-full">
+              <CardHeader>
+                <LineChart className="h-6 w-6 text-primary mb-2" />
+                <CardTitle className="text-base">My progress</CardTitle>
+                <CardDescription>Track your scores and improvement over time.</CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
         </div>
 
         <Card>

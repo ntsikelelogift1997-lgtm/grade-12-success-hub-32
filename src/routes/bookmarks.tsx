@@ -26,7 +26,7 @@ type Row = {
     id: string;
     question_text: string;
     explanation: string | null;
-    question_options: { id: string; option_text: string; is_correct: boolean; order_index: number }[];
+    question_options: { id: string; option_text: string; order_index: number }[];
     practice_tests: { id: string; title: string; subjects: { name: string } | null } | null;
   } | null;
 };
@@ -45,7 +45,7 @@ function BookmarksPage() {
     if (!user) return;
     supabase
       .from("question_bookmarks")
-      .select("id, question_id, questions ( id, question_text, explanation, question_options ( id, option_text, is_correct, order_index ), practice_tests ( id, title, subjects ( name ) ) )")
+      .select("id, question_id, questions ( id, question_text, explanation, question_options ( id, option_text, order_index ), practice_tests ( id, title, subjects ( name ) ) )")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
@@ -134,12 +134,9 @@ function BookmarksPage() {
                         {row.questions.question_options.map((opt) => (
                           <div
                             key={opt.id}
-                            className={`rounded-md border px-3 py-2 text-sm ${
-                              opt.is_correct ? "border-green-500 bg-green-500/10" : "border-input"
-                            }`}
+                            className="rounded-md border border-input px-3 py-2 text-sm"
                           >
                             {opt.option_text}
-                            {opt.is_correct && <span className="ml-2 text-xs text-muted-foreground">Correct</span>}
                           </div>
                         ))}
                         {row.questions.explanation && (
@@ -148,7 +145,11 @@ function BookmarksPage() {
                             <p>{row.questions.explanation}</p>
                           </div>
                         )}
+                        <p className="text-xs text-muted-foreground italic">
+                          Take the test to see which option is correct in the answer review.
+                        </p>
                       </CardContent>
+
                     </Card>
                   );
                 })}

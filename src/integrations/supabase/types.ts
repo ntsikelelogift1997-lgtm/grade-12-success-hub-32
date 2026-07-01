@@ -17,6 +17,7 @@ export type Database = {
       attempt_answers: {
         Row: {
           attempt_id: string
+          correct_option_id: string | null
           created_at: string
           id: string
           is_correct: boolean
@@ -25,6 +26,7 @@ export type Database = {
         }
         Insert: {
           attempt_id: string
+          correct_option_id?: string | null
           created_at?: string
           id?: string
           is_correct?: boolean
@@ -33,6 +35,7 @@ export type Database = {
         }
         Update: {
           attempt_id?: string
+          correct_option_id?: string | null
           created_at?: string
           id?: string
           is_correct?: boolean
@@ -45,6 +48,13 @@ export type Database = {
             columns: ["attempt_id"]
             isOneToOne: false
             referencedRelation: "test_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attempt_answers_correct_option_id_fkey"
+            columns: ["correct_option_id"]
+            isOneToOne: false
+            referencedRelation: "question_options"
             referencedColumns: ["id"]
           },
           {
@@ -177,6 +187,39 @@ export type Database = {
         }
         Relationships: []
       }
+      question_answer_keys: {
+        Row: {
+          correct_option_id: string
+          created_at: string
+          question_id: string
+        }
+        Insert: {
+          correct_option_id: string
+          created_at?: string
+          question_id: string
+        }
+        Update: {
+          correct_option_id?: string
+          created_at?: string
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_answer_keys_correct_option_id_fkey"
+            columns: ["correct_option_id"]
+            isOneToOne: false
+            referencedRelation: "question_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_answer_keys_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: true
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       question_bookmarks: {
         Row: {
           created_at: string
@@ -209,21 +252,18 @@ export type Database = {
       question_options: {
         Row: {
           id: string
-          is_correct: boolean
           option_text: string
           order_index: number
           question_id: string
         }
         Insert: {
           id?: string
-          is_correct?: boolean
           option_text: string
           order_index?: number
           question_id: string
         }
         Update: {
           id?: string
-          is_correct?: boolean
           option_text?: string
           order_index?: number
           question_id?: string

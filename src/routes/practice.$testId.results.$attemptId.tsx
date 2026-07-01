@@ -26,14 +26,16 @@ type ReviewRow = {
   question_id: string;
   selected_option_id: string | null;
   is_correct: boolean;
+  correct_option_id: string | null;
   questions: {
     id: string;
     question_text: string;
     explanation: string | null;
     order_index: number;
-    question_options: { id: string; option_text: string; is_correct: boolean; order_index: number }[];
+    question_options: { id: string; option_text: string; order_index: number }[];
   } | null;
 };
+
 
 function Results() {
   const { testId, attemptId } = Route.useParams();
@@ -58,7 +60,7 @@ function Results() {
           .maybeSingle(),
         supabase
           .from("attempt_answers")
-          .select("question_id, selected_option_id, is_correct, questions ( id, question_text, explanation, order_index, question_options ( id, option_text, is_correct, order_index ) )")
+          .select("question_id, selected_option_id, is_correct, correct_option_id, questions ( id, question_text, explanation, order_index, question_options ( id, option_text, order_index ) )")
           .eq("attempt_id", attemptId),
       ]);
       setAttempt(a as unknown as Attempt | null);
@@ -117,7 +119,7 @@ function Results() {
           <div className="space-y-3">
             {rows.map((row, i) => {
               if (!row.questions) return null;
-              const correctOpt = row.questions.question_options.find((o) => o.is_correct);
+              const correctOpt = row.questions.question_options.find((o) => o.id === row.correct_option_id);
               return (
                 <Card key={row.question_id}>
                   <CardHeader className="pb-3">
@@ -140,7 +142,7 @@ function Results() {
                   <CardContent className="space-y-2">
                     {row.questions.question_options.map((opt) => {
                       const isSelected = opt.id === row.selected_option_id;
-                      const isCorrect = opt.is_correct;
+                      const isCorrect = opt.id === row.correct_option_id;
                       const cls = isCorrect
                         ? "border-green-500 bg-green-500/10"
                         : isSelected

@@ -143,12 +143,14 @@ function AuthPage() {
                       <SelectTrigger id="su-role"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="student">Student</SelectItem>
-                        <SelectItem value="teacher">Teacher</SelectItem>
                         <SelectItem value="parent">Parent</SelectItem>
-                        <SelectItem value="school_admin">School Administrator</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Teacher and school administrator accounts must be provisioned by an administrator.
+                    </p>
                   </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="su-school">School {role === "student" ? "" : "(optional)"}</Label>
                     <Input id="su-school" value={school} onChange={(e) => setSchool(e.target.value)} required={role === "student"} />

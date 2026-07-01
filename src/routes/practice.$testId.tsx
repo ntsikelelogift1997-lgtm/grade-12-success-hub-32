@@ -185,55 +185,31 @@ function TakeTest() {
     setSubmitting(true);
 
     const aid = attemptIdRef.current;
-    const initialSeconds = test.duration_minutes * 60;
-    const timeTaken = Math.max(0, initialSeconds - (stateRef.current.secondsLeft ?? 0));
 
-    // Server-trusted scoring
-    const { data: opts } = await supabase
-      .from("question_options")
-      .select("id, question_id, is_correct")
-      .in("question_id", questions.map((q) => q.id));
+    const answersPayload = questions.map((q) => ({
+      question_id: q.id,
+      selected_option_id: answers[q.id] ?? null,
+    }));
 
-    const correctByQuestion: Record<string, string> = {};
-    (opts ?? []).forEach((o) => {
-      if (o.is_correct) correctByQuestion[o.question_id] = o.id;
+    // Server-trusted scoring — correctness is computed in the database.
+    const { error: rpcErr } = await supabase.rpc("submit_test_attempt", {
+      _attempt_id: aid,
+      _answers: answersPayload,
     });
 
-    let score = 0;
-    const answerRows = questions.map((q) => {
-      const selected = answers[q.id] ?? null;
-      const isCorrect = selected != null && correctByQuestion[q.id] === selected;
-      if (isCorrect) score += 1;
-      return { attempt_id: aid, question_id: q.id, selected_option_id: selected, is_correct: isCorrect };
-    });
-
-    const { error: updErr } = await supabase
-      .from("test_attempts")
-      .update({
-        score,
-        total_questions: questions.length,
-        time_taken_seconds: timeTaken,
-        completed_at: new Date().toISOString(),
-        status: "completed",
-        seconds_remaining: 0,
-      })
-      .eq("id", aid);
-
-    if (updErr) {
-      toast.error("Could not save attempt. Try again.");
+    if (rpcErr) {
+      toast.error("Could not submit your test. Try again.");
       submittedRef.current = false;
       setSubmitting(false);
       return;
     }
-
-    await supabase.from("attempt_answers").insert(answerRows);
-    await supabase.from("attempt_progress_answers").delete().eq("attempt_id", aid);
 
     navigate({
       to: "/practice/$testId/results/$attemptId",
       params: { testId: test.id, attemptId: aid },
     });
   }, [answers, navigate, questions, test, user]);
+
 
   // Timer
   useEffect(() => {

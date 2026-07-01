@@ -17,6 +17,7 @@ export type Database = {
       attempt_answers: {
         Row: {
           attempt_id: string
+          correct_option_id: string | null
           created_at: string
           id: string
           is_correct: boolean
@@ -25,6 +26,7 @@ export type Database = {
         }
         Insert: {
           attempt_id: string
+          correct_option_id?: string | null
           created_at?: string
           id?: string
           is_correct?: boolean
@@ -33,6 +35,7 @@ export type Database = {
         }
         Update: {
           attempt_id?: string
+          correct_option_id?: string | null
           created_at?: string
           id?: string
           is_correct?: boolean
@@ -45,6 +48,13 @@ export type Database = {
             columns: ["attempt_id"]
             isOneToOne: false
             referencedRelation: "test_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attempt_answers_correct_option_id_fkey"
+            columns: ["correct_option_id"]
+            isOneToOne: false
+            referencedRelation: "question_options"
             referencedColumns: ["id"]
           },
           {

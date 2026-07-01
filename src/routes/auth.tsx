@@ -20,7 +20,7 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Role = "student" | "teacher" | "parent" | "school_admin";
+type Role = "student" | "parent";
 
 function AuthPage() {
   const navigate = useNavigate();

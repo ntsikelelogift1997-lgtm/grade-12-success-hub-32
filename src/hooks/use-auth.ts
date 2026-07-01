@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -9,23 +9,30 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [rolesLoaded, setRolesLoaded] = useState(false);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
+        setRolesLoaded(false);
         // Defer to avoid deadlock
         setTimeout(() => loadRoles(s.user.id), 0);
       } else {
         setRoles([]);
+        setRolesLoaded(true);
       }
     });
 
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-      if (data.session?.user) loadRoles(data.session.user.id);
+      if (data.session?.user) {
+        loadRoles(data.session.user.id);
+      } else {
+        setRolesLoaded(true);
+      }
       setLoading(false);
     });
 
@@ -38,7 +45,26 @@ export function useAuth() {
       .select("role")
       .eq("user_id", userId);
     setRoles((data ?? []).map((r) => r.role as AppRole));
+    setRolesLoaded(true);
   }
 
-  return { session, user, roles, loading, isAuthenticated: !!user };
+  const hasRole = useCallback(
+    (role: AppRole) => roles.includes(role),
+    [roles],
+  );
+  const hasAnyRole = useCallback(
+    (allowed: AppRole[]) => roles.some((r) => allowed.includes(r)),
+    [roles],
+  );
+
+  return {
+    session,
+    user,
+    roles,
+    loading,
+    rolesLoaded,
+    isAuthenticated: !!user,
+    hasRole,
+    hasAnyRole,
+  };
 }

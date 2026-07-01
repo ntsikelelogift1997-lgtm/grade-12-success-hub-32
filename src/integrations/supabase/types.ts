@@ -380,6 +380,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      submit_test_attempt: {
+        Args: { _answers: Json; _attempt_id: string }
+        Returns: {
+          attempt_id: string
+          score: number
+          total_questions: number
+        }[]
+      }
     }
     Enums: {
       app_role: "student" | "teacher" | "parent" | "school_admin"

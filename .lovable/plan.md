@@ -1,51 +1,50 @@
-## What you'll get
+## Goal
 
-1. **Bookmark questions** — star icon on every question (during a test and in the results review). A new **"Bookmarked"** page lists all starred questions across subjects, showing the correct answer and explanation so you can come back to tricky ones any time.
-2. **Resume in-progress tests** — leave a test halfway and pick it up later from exactly where you stopped: same question, same answers selected, same time remaining. Timer **pauses** when you exit and resumes when you return.
+Add client-side role gates so only teachers/school admins can reach teacher- or admin-only routes. Students and parents who hit those URLs are silently redirected to `/dashboard`.
 
-## Changes
+Since no teacher/admin routes exist yet, I'll also scaffold empty landing pages so the guard is verifiable end-to-end today. Real teacher/admin features can be added under these layouts later without re-doing the auth wiring.
 
-### Database (1 migration)
+Backend RLS already restricts data — this change is defense-in-depth against accidentally rendering privileged UI or firing a fetch that leaks an error to a student's screen.
 
-- New table **`question_bookmarks`** (per-user, per-question; toggle on/off). Only the user who created a bookmark can see or remove it.
-- Add columns to **`test_attempts`**:
-  - `seconds_remaining` — time left at last save
-  - `last_seen_question_index` — which question you were on
-  - `status` defaults to `in_progress` until you submit (kept consistent with existing `completed_at`)
-- New table **`attempt_progress_answers`** — auto-saves your currently selected option for each question while a test is in progress. On submit, these are converted into the final scored `attempt_answers` rows. Keeping in-progress answers separate from final scored answers means we never accidentally show a half-finished attempt as a "result".
+## Scope
 
-### Test-taking page (`/practice/$testId`)
+- Two pathless role-gated layouts: `_teacher` (teacher OR school_admin) and `_admin` (school_admin only).
+- One scaffolded route under each: `/teacher` and `/admin` — placeholder "coming soon" pages, no data fetching.
+- `useAuth` gains `hasRole` / `hasAnyRole` helpers so components can also conditionally render buttons/links.
+- Dashboard shows Teacher / Admin quick-access cards only when the signed-in user has the matching role.
 
-- On open, check for an **existing in-progress attempt** for this test:
-  - If one exists → show a small "Resume" / "Start fresh" prompt, then restore previous answers, current question index, and remaining seconds.
-  - If none → create a new in-progress attempt row up front (so it can be resumed even if you close the tab immediately).
-- **Auto-save** every answer change to `attempt_progress_answers` and persist `seconds_remaining` + current question index every ~10 seconds and on tab close (using `visibilitychange`).
-- New **star button** on each question that toggles a bookmark.
-- An **"Exit & save"** button replaces today's plain Exit link.
-- Final submit clears the in-progress rows and writes scored `attempt_answers` exactly like today.
+## Blocked-access behavior
 
-### Results / review page
+Silent redirect to `/dashboard`. No error page, no toast. Rationale: the routes are non-discoverable for non-privileged users (nav never links them there); anyone who lands there did so by URL-typing or a stale link, and bouncing to their home surface is the least confusing outcome.
 
-- Star button next to each question (same bookmark behavior).
+## Files
 
-### Practice list (`/practice`)
+New:
+- `src/routes/_teacher.tsx` — pathless layout, `ssr: false`, waits for auth + roles, redirects if not teacher/school_admin, otherwise renders `<Outlet />`.
+- `src/routes/_teacher.teacher.tsx` — leaf at `/teacher`, placeholder page.
+- `src/routes/_admin.tsx` — same shape, requires `school_admin`.
+- `src/routes/_admin.admin.tsx` — leaf at `/admin`, placeholder page.
 
-- Surfaces any in-progress attempt with a **"Resume"** badge and CTA at the top.
+Edited:
+- `src/hooks/use-auth.ts` — add `hasRole(role)` and `hasAnyRole(roles[])`.
+- `src/routes/dashboard.tsx` — conditionally show Teacher and Admin cards using `hasAnyRole` / `hasRole`.
 
-### New page `/bookmarks`
-
-- Lists all bookmarked questions grouped by subject, with the question, correct answer highlighted, and the explanation.
-- Unstar button to remove.
-- Linked from the dashboard and from the practice list.
-
-### Dashboard
-
-- New "Bookmarked questions" card alongside the existing practice/progress cards.
+Not touched: existing `/practice*`, `/progress`, `/bookmarks`, `/auth`, root layout, migrations, or RLS.
 
 ## Technical details
 
-- All new tables use the same RLS pattern: `auth.uid() = user_id`, plus `GRANT`s for `authenticated` and `service_role`.
-- Scoring stays server-trusted: on submit we re-fetch `is_correct` from `question_options` rather than trusting whatever is in `attempt_progress_answers`.
-- Auto-save uses a debounced `upsert` keyed on `(attempt_id, question_id)` so rapid changes don't flood the network.
-- Timer is pause-on-exit by storing `seconds_remaining` rather than an `expires_at` deadline.
-- No changes to the existing auth, roles, profiles, or scoring logic.
+- The guards run client-side only (`ssr: false`) because Supabase session and roles are read from the browser, matching the existing `dashboard.tsx` pattern. Server-side data protection continues to rely on RLS + the `has_role` DB function.
+- Guard flow inside the layout component:
+  1. If `loading` → render a neutral "Loading..." screen.
+  2. If not authenticated → `navigate({ to: "/auth" })`.
+  3. If authenticated but missing required role → `navigate({ to: "/dashboard", replace: true })`.
+  4. Otherwise → `<Outlet />`.
+  Uses `useEffect` + `useNavigate`, mirroring how `dashboard.tsx` already redirects unauthenticated users, so no new router-context plumbing is needed.
+- `hasRole` / `hasAnyRole` are pure functions over the existing `roles` state — no extra fetches.
+- Filenames use TanStack's flat dot convention: `_teacher.tsx` is the pathless layout, `_teacher.teacher.tsx` is its child at URL `/teacher`.
+
+## Out of scope
+
+- Any real teacher/admin functionality (roster management, class analytics, user provisioning, etc.).
+- Server-side role checks — RLS + the existing `has_role` function already enforce this at the data layer; this plan is purely a UI guard.
+- Changing how roles are assigned (already fixed in the prior security migration: only student/parent are self-assignable).

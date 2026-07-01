@@ -13,9 +13,13 @@ import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as TeacherRouteImport } from './routes/_teacher'
+import { Route as AdminRouteImport } from './routes/_admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PracticeIndexRouteImport } from './routes/practice.index'
 import { Route as PracticeTestIdRouteImport } from './routes/practice.$testId'
+import { Route as TeacherTeacherRouteImport } from './routes/_teacher.teacher'
+import { Route as AdminAdminRouteImport } from './routes/_admin.admin'
 import { Route as PracticeTestIdResultsAttemptIdRouteImport } from './routes/practice.$testId.results.$attemptId'
 
 const ProgressRoute = ProgressRouteImport.update({
@@ -38,6 +42,14 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TeacherRoute = TeacherRouteImport.update({
+  id: '/_teacher',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/_admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -53,6 +65,16 @@ const PracticeTestIdRoute = PracticeTestIdRouteImport.update({
   path: '/practice/$testId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TeacherTeacherRoute = TeacherTeacherRouteImport.update({
+  id: '/teacher',
+  path: '/teacher',
+  getParentRoute: () => TeacherRoute,
+} as any)
+const AdminAdminRoute = AdminAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AdminRoute,
+} as any)
 const PracticeTestIdResultsAttemptIdRoute =
   PracticeTestIdResultsAttemptIdRouteImport.update({
     id: '/results/$attemptId',
@@ -66,6 +88,8 @@ export interface FileRoutesByFullPath {
   '/bookmarks': typeof BookmarksRoute
   '/dashboard': typeof DashboardRoute
   '/progress': typeof ProgressRoute
+  '/admin': typeof AdminAdminRoute
+  '/teacher': typeof TeacherTeacherRoute
   '/practice/$testId': typeof PracticeTestIdRouteWithChildren
   '/practice/': typeof PracticeIndexRoute
   '/practice/$testId/results/$attemptId': typeof PracticeTestIdResultsAttemptIdRoute
@@ -76,6 +100,8 @@ export interface FileRoutesByTo {
   '/bookmarks': typeof BookmarksRoute
   '/dashboard': typeof DashboardRoute
   '/progress': typeof ProgressRoute
+  '/admin': typeof AdminAdminRoute
+  '/teacher': typeof TeacherTeacherRoute
   '/practice/$testId': typeof PracticeTestIdRouteWithChildren
   '/practice': typeof PracticeIndexRoute
   '/practice/$testId/results/$attemptId': typeof PracticeTestIdResultsAttemptIdRoute
@@ -83,10 +109,14 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_admin': typeof AdminRouteWithChildren
+  '/_teacher': typeof TeacherRouteWithChildren
   '/auth': typeof AuthRoute
   '/bookmarks': typeof BookmarksRoute
   '/dashboard': typeof DashboardRoute
   '/progress': typeof ProgressRoute
+  '/_admin/admin': typeof AdminAdminRoute
+  '/_teacher/teacher': typeof TeacherTeacherRoute
   '/practice/$testId': typeof PracticeTestIdRouteWithChildren
   '/practice/': typeof PracticeIndexRoute
   '/practice/$testId/results/$attemptId': typeof PracticeTestIdResultsAttemptIdRoute
@@ -99,6 +129,8 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/dashboard'
     | '/progress'
+    | '/admin'
+    | '/teacher'
     | '/practice/$testId'
     | '/practice/'
     | '/practice/$testId/results/$attemptId'
@@ -109,16 +141,22 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/dashboard'
     | '/progress'
+    | '/admin'
+    | '/teacher'
     | '/practice/$testId'
     | '/practice'
     | '/practice/$testId/results/$attemptId'
   id:
     | '__root__'
     | '/'
+    | '/_admin'
+    | '/_teacher'
     | '/auth'
     | '/bookmarks'
     | '/dashboard'
     | '/progress'
+    | '/_admin/admin'
+    | '/_teacher/teacher'
     | '/practice/$testId'
     | '/practice/'
     | '/practice/$testId/results/$attemptId'
@@ -126,6 +164,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  TeacherRoute: typeof TeacherRouteWithChildren
   AuthRoute: typeof AuthRoute
   BookmarksRoute: typeof BookmarksRoute
   DashboardRoute: typeof DashboardRoute
@@ -164,6 +204,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_teacher': {
+      id: '/_teacher'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof TeacherRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_admin': {
+      id: '/_admin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -185,6 +239,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PracticeTestIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_teacher/teacher': {
+      id: '/_teacher/teacher'
+      path: '/teacher'
+      fullPath: '/teacher'
+      preLoaderRoute: typeof TeacherTeacherRouteImport
+      parentRoute: typeof TeacherRoute
+    }
+    '/_admin/admin': {
+      id: '/_admin/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminAdminRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/practice/$testId/results/$attemptId': {
       id: '/practice/$testId/results/$attemptId'
       path: '/results/$attemptId'
@@ -194,6 +262,27 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminAdminRoute: typeof AdminAdminRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminAdminRoute: AdminAdminRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
+interface TeacherRouteChildren {
+  TeacherTeacherRoute: typeof TeacherTeacherRoute
+}
+
+const TeacherRouteChildren: TeacherRouteChildren = {
+  TeacherTeacherRoute: TeacherTeacherRoute,
+}
+
+const TeacherRouteWithChildren =
+  TeacherRoute._addFileChildren(TeacherRouteChildren)
 
 interface PracticeTestIdRouteChildren {
   PracticeTestIdResultsAttemptIdRoute: typeof PracticeTestIdResultsAttemptIdRoute
@@ -209,6 +298,8 @@ const PracticeTestIdRouteWithChildren = PracticeTestIdRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  TeacherRoute: TeacherRouteWithChildren,
   AuthRoute: AuthRoute,
   BookmarksRoute: BookmarksRoute,
   DashboardRoute: DashboardRoute,

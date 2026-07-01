@@ -5,7 +5,7 @@ import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, LineChart, Star } from "lucide-react";
+import { BookOpen, LineChart, Star, GraduationCap, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({
@@ -30,7 +30,7 @@ type Profile = { full_name: string | null; school: string | null; grade: string 
 
 function Dashboard() {
   const navigate = useNavigate();
-  const { user, roles, loading } = useAuth();
+  const { user, roles, loading, hasRole, hasAnyRole } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
@@ -100,6 +100,29 @@ function Dashboard() {
               </CardHeader>
             </Card>
           </Link>
+          {hasAnyRole(["teacher", "school_admin"]) && (
+            <Link to="/teacher">
+              <Card className="hover:border-primary transition-colors h-full">
+                <CardHeader>
+                  <GraduationCap className="h-6 w-6 text-primary mb-2" />
+                  <CardTitle className="text-base">Teacher workspace</CardTitle>
+                  <CardDescription>Class rosters and student progress (coming soon).</CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          )}
+          {hasRole("school_admin") && (
+            <Link to="/admin">
+              <Card className="hover:border-primary transition-colors h-full">
+                <CardHeader>
+                  <ShieldCheck className="h-6 w-6 text-primary mb-2" />
+                  <CardTitle className="text-base">Administrator</CardTitle>
+                  <CardDescription>User provisioning and school reporting (coming soon).</CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          )}
+
         </div>
 
         <Card>
